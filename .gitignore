@@ -1,0 +1,10 @@
+# Various build artefacts
+build
+*.so
+*.dylib
+*.egg-info
+.eggs
+
+# Python bytecode cache
+__pycache__
+*.pyc
