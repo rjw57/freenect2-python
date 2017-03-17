@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import enum
 
 from ._freenect2 import lib, ffi
 
@@ -15,12 +16,26 @@ def _get_freenect2():
 class NoDeviceError(RuntimeError):
     pass
 
+class FrameType(enum.Enum):
+    Color = lib.FRAME_TYPE_COLOR
+    Ir = lib.FRAME_TYPE_IR
+    Depth = lib.FRAME_TYPE_DEPTH
+
+class FrameFormat(enum.Enum):
+    Invalid = lib.FRAME_FORMAT_INVALID
+    Raw = lib.FRAME_FORMAT_RAW
+    Float = lib.FRAME_FORMAT_FLOAT
+    BGRX = lib.FRAME_FORMAT_BGRX
+    RGBX = lib.FRAME_FORMAT_RGBX
+    Gray = lib.FRAME_FORMAT_GRAY
+
 @ffi.def_extern()
 def frame_listener_callback(type_, frame_ref, user_data):
     callable_ = ffi.from_handle(user_data)
     assert callable(callable_)
-    rv = callable_(type_, frame_ref)
-    return rv if rv is not None else 0
+    frame = Frame(ffi.gc(frame_ref, lib.freenect2_frame_dispose))
+    callable_(FrameType(type_), frame)
+    return 1
 
 def _callable_to_frame_listener(callable_):
     assert callable(callable_)
@@ -65,3 +80,58 @@ class Device(object):
         self.start()
         yield self
         self.stop()
+
+class Frame(object):
+    def __init__(self, frame_ref):
+        self._c_object = frame_ref
+
+    @property
+    def width(self):
+        return lib.freenect2_frame_get_width(self._c_object)
+
+    @property
+    def height(self):
+        return lib.freenect2_frame_get_height(self._c_object)
+
+    @property
+    def bytes_per_pixel(self):
+        return lib.freenect2_frame_get_bytes_per_pixel(self._c_object)
+
+    @property
+    def data(self):
+        data_ptr = lib.freenect2_frame_get_data(self._c_object)
+        return ffi.buffer(
+            data_ptr, self.width * self.height * self.bytes_per_pixel)
+
+    @property
+    def timestamp(self):
+        return lib.freenect2_frame_get_timestamp(self._c_object)
+
+    @property
+    def sequence(self):
+        return lib.freenect2_frame_get_sequence(self._c_object)
+
+    @property
+    def exposure(self):
+        return lib.freenect2_frame_get_exposure(self._c_object)
+
+    @property
+    def gain(self):
+        return lib.freenect2_frame_get_gain(self._c_object)
+
+    @property
+    def gamma(self):
+        return lib.freenect2_frame_get_gamma(self._c_object)
+
+    @property
+    def status(self):
+        return lib.freenect2_frame_get_status(self._c_object)
+
+    @property
+    def format(self):
+        return FrameFormat(lib.freenect2_frame_get_format(self._c_object))
+
+    def __repr__(self):
+        return (
+            'Frame(width={0.width}, height={0.height}, sequence={0.sequence}, '
+            'timestamp={0.timestamp}, format={0.format})').format(self)

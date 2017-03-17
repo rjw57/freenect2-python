@@ -9,6 +9,8 @@ ffibuilder.set_source(
     "freenect2._freenect2", r'''
 #include <libfreenect2/libfreenect2.hpp>
 
+extern "C" {
+
 typedef void *Freenect2Ref;
 typedef void *Freenect2DeviceRef;
 typedef void *Freenect2FrameListenerRef;
@@ -131,6 +133,79 @@ void freenect2_frame_listener_dispose(Freenect2FrameListenerRef fl_ref)
     delete fl;
 }
 
+void freenect2_frame_dispose(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    delete frame;
+}
+
+size_t freenect2_frame_get_width(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->width;
+}
+
+size_t freenect2_frame_get_height(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->height;
+}
+
+size_t freenect2_frame_get_bytes_per_pixel(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->bytes_per_pixel;
+}
+
+void* freenect2_frame_get_data(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->data;
+}
+
+uint32_t freenect2_frame_get_timestamp(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->timestamp;
+}
+
+uint32_t freenect2_frame_get_sequence(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->sequence;
+}
+
+float freenect2_frame_get_exposure(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->exposure;
+}
+
+float freenect2_frame_get_gain(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->gain;
+}
+
+float freenect2_frame_get_gamma(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->gamma;
+}
+
+uint32_t freenect2_frame_get_status(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return frame->status;
+}
+
+Freenect2FrameFormat freenect2_frame_get_format(Freenect2FrameRef frame_ref)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    return static_cast<Freenect2FrameFormat>(frame->format);
+}
+
+}
 ''',
     libraries=['freenect2'], source_extension='.cpp',
     include_dirs=[os.path.expanduser('~/.local/include')],
@@ -175,6 +250,19 @@ void freenect2_frame_listener_dispose(Freenect2FrameListenerRef fl_ref);
 
 extern "Python" int frame_listener_callback(
     Freenect2FrameType type, Freenect2FrameRef frame, void *user_data);
+
+void freenect2_frame_dispose(Freenect2FrameRef frame_ref);
+size_t freenect2_frame_get_width(Freenect2FrameRef frame_ref);
+size_t freenect2_frame_get_height(Freenect2FrameRef frame_ref);
+size_t freenect2_frame_get_bytes_per_pixel(Freenect2FrameRef frame_ref);
+void* freenect2_frame_get_data(Freenect2FrameRef frame_ref);
+uint32_t freenect2_frame_get_timestamp(Freenect2FrameRef frame_ref);
+uint32_t freenect2_frame_get_sequence(Freenect2FrameRef frame_ref);
+float freenect2_frame_get_exposure(Freenect2FrameRef frame_ref);
+float freenect2_frame_get_gain(Freenect2FrameRef frame_ref);
+float freenect2_frame_get_gamma(Freenect2FrameRef frame_ref);
+uint32_t freenect2_frame_get_status(Freenect2FrameRef frame_ref);
+Freenect2FrameFormat freenect2_frame_get_format(Freenect2FrameRef frame_ref);
 ''')
 
 if __name__ == "__main__":
