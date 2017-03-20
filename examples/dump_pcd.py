@@ -11,7 +11,7 @@ def main():
     device.color_frame_listener = frame_listener
     device.ir_and_depth_frame_listener = frame_listener
     with device.running():
-        while len(frames) < 3:
+        while FrameType.Color not in frames or FrameType.Depth not in frames:
             sleep(0.1)
 
     rgb, depth = frames[FrameType.Color], frames[FrameType.Depth]
