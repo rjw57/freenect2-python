@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from contextlib import contextmanager
 import enum
 
@@ -64,6 +66,7 @@ class Device(object):
 
         self._color_frame_listener = (None, None, None)
         self._ir_and_depth_frame_listener = (None, None, None)
+        self._registration = None
 
     def start(self):
         lib.freenect2_device_start(self._c_object)
@@ -76,7 +79,10 @@ class Device(object):
 
     @property
     def registration(self):
-        return Registration(self.ir_camera_params, self.color_camera_params)
+        if self._registration is None:
+            self._registration = Registration(
+                self.ir_camera_params, self.color_camera_params)
+        return self._registration
 
     @property
     def ir_camera_params(self):
@@ -270,6 +276,57 @@ class Registration(object):
         lib.freenect2_registration_apply(
             self._c_object,
             rgb._c_object, depth._c_object, undistorted._c_object,
-            registered._c_object, enable_filter
+            registered._c_object, 1 if enable_filter else 0
         )
         return undistorted, registered
+
+    def get_points_xyz(self, undistorted, rows, cols):
+        rows = np.atleast_1d(rows).astype(np.int32)
+        cols = np.atleast_1d(cols).astype(np.int32)
+        assert rows.shape == cols.shape
+        xs = np.ones(rows.shape, dtype=np.float32)
+        ys = np.ones(rows.shape, dtype=np.float32)
+        zs = np.ones(rows.shape, dtype=np.float32)
+        lib.freenect2_registration_get_points_xyz(
+            self._c_object, undistorted._c_object,
+            ffi.cast('int32_t*', rows.ctypes.data),
+            ffi.cast('int32_t*', cols.ctypes.data),
+            int(np.product(rows.shape)),
+            ffi.cast('float*', xs.ctypes.data),
+            ffi.cast('float*', ys.ctypes.data),
+            ffi.cast('float*', zs.ctypes.data)
+        )
+        return xs, ys, zs
+
+    def write_pcd(self, file_object, undistorted, registered=None):
+        undistorted_array = undistorted.to_array()
+        rows, cols = np.nonzero(undistorted_array)
+        xs, ys, zs = self.get_points_xyz(undistorted, rows, cols)
+
+        print('VERSION .7', file=file_object)
+
+        if registered is None:
+            print('FIELDS x y z', file=file_object)
+            print('SIZE 4 4 4', file=file_object)
+            print('TYPE F F F', file=file_object)
+            print('COUNT 1 1 1', file=file_object)
+            data = np.vstack((-xs, -ys, -zs)).T
+        else:
+            print('FIELDS x y z rgb', file=file_object)
+            print('SIZE 4 4 4 4', file=file_object)
+            print('TYPE F F F I', file=file_object)
+            print('COUNT 1 1 1 1', file=file_object)
+            bgrx = (registered.to_array()[rows, cols, ...]).astype(np.uint32)
+            rgbs = bgrx[:, 0] + (bgrx[:, 1] << 8) + (bgrx[:, 2] << 16)
+            data = np.vstack((-xs, -ys, -zs, rgbs)).T
+
+        print('WIDTH {}'.format(xs.shape[0]), file=file_object)
+        print('HEIGHT 1', file=file_object)
+        print('VIEWPOINT 0 0 0 1 0 0 0', file=file_object)
+        print('POINTS {}'.format(xs.shape[0]), file=file_object)
+        print('DATA ascii', file=file_object)
+
+        assert data.shape[0] == xs.shape[0]
+
+        for row in data:
+            print(' '.join([str(f) for f in row]), file=file_object)

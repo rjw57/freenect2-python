@@ -323,7 +323,23 @@ void freenect2_registration_apply(
     Frame* depth = reinterpret_cast<Frame*>(depth_ref);
     Frame* undistorted = reinterpret_cast<Frame*>(undistorted_ref);
     Frame* registered = reinterpret_cast<Frame*>(registered_ref);
-    reg->apply(rgb, depth, undistorted, registered, enable_filter);
+    reg->apply(rgb, depth, undistorted, registered,
+        (enable_filter != 0) ? true : false);
+}
+
+void freenect2_registration_get_points_xyz(
+    Freenect2RegistrationRef reg_ref, Freenect2FrameRef undistorted_ref,
+    const int32_t* rows, const int32_t* cols, size_t n_points,
+    float* out_xs, float* out_ys, float* out_zs)
+{
+    Registration* reg = reinterpret_cast<Registration*>(reg_ref);
+    Frame* undistorted = reinterpret_cast<Frame*>(undistorted_ref);
+    for(size_t p_idx=0; p_idx<n_points; ++p_idx)
+    {
+        reg->getPointXYZ(
+            undistorted, rows[p_idx], cols[p_idx],
+            out_xs[p_idx], out_ys[p_idx], out_zs[p_idx]);
+    }
 }
 
 }
@@ -443,6 +459,10 @@ void freenect2_registration_apply(
     Freenect2RegistrationRef reg_ref, Freenect2FrameRef rgb_ref,
     Freenect2FrameRef depth_ref, Freenect2FrameRef undistorted_ref,
     Freenect2FrameRef registered_ref, int enable_filter);
+void freenect2_registration_get_points_xyz(
+    Freenect2RegistrationRef reg_ref, Freenect2FrameRef undistorted_ref,
+    const int32_t* rows, const int32_t* cols, size_t n_points,
+    float* out_xs, float* out_ys, float* out_zs);
 ''')
 
 if __name__ == "__main__":
