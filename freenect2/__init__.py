@@ -298,6 +298,13 @@ class Registration(object):
         )
         return xs, ys, zs
 
+    def get_points_xyz_array(self, undistorted):
+        """Return a 3D array of x, y, z points for each point in an undistorted
+        frame. Invalid points are Nan-ed."""
+        cols, rows = np.meshgrid(
+            np.arange(undistorted.width), np.arange(undistorted.height))
+        return np.dstack(self.get_points_xyz(undistorted, rows, cols))
+
     def write_pcd(self, file_object, undistorted, registered=None):
         undistorted_array = undistorted.to_array()
         rows, cols = np.nonzero(undistorted_array)
