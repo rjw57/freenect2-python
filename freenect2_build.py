@@ -8,6 +8,7 @@ ffibuilder = FFI()
 ffibuilder.set_source(
     "freenect2._freenect2", r'''
 #include <libfreenect2/libfreenect2.hpp>
+#include <libfreenect2/registration.h>
 
 extern "C" {
 
@@ -15,6 +16,7 @@ typedef void *Freenect2Ref;
 typedef void *Freenect2DeviceRef;
 typedef void *Freenect2FrameListenerRef;
 typedef void *Freenect2FrameRef;
+typedef void *Freenect2RegistrationRef;
 
 class Freenect2FrameListener;
 
@@ -34,6 +36,9 @@ typedef enum {
     FRAME_FORMAT_RGBX = Frame::RGBX,
     FRAME_FORMAT_GRAY = Frame::Gray,
 } Freenect2FrameFormat;
+
+typedef Freenect2Device::IrCameraParams IrCameraParams;
+typedef Freenect2Device::ColorCameraParams ColorCameraParams;
 
 Freenect2Ref freenect2_create(void)
 {
@@ -94,6 +99,28 @@ void freenect2_device_set_color_frame_listener(
     device->setColorFrameListener(fl);
 }
 
+void freenect2_device_set_ir_and_depth_frame_listener(
+    Freenect2DeviceRef device_ref, Freenect2FrameListenerRef fl_ref)
+{
+    Freenect2Device* device = reinterpret_cast<Freenect2Device*>(device_ref);
+    FrameListener* fl = reinterpret_cast<FrameListener*>(fl_ref);
+    device->setIrAndDepthFrameListener(fl);
+}
+
+IrCameraParams freenect2_device_get_ir_camera_params(
+    Freenect2DeviceRef device_ref)
+{
+    Freenect2Device* device = reinterpret_cast<Freenect2Device*>(device_ref);
+    return device->getIrCameraParams();
+}
+
+ColorCameraParams freenect2_device_get_color_camera_params(
+    Freenect2DeviceRef device_ref)
+{
+    Freenect2Device* device = reinterpret_cast<Freenect2Device*>(device_ref);
+    return device->getColorCameraParams();
+}
+
 typedef int (*Freenect2FrameListenerFunc) (
     Freenect2FrameType type, Freenect2FrameRef frame, void *user_data);
 
@@ -131,6 +158,13 @@ void freenect2_frame_listener_dispose(Freenect2FrameListenerRef fl_ref)
 {
     Freenect2FrameListener* fl = reinterpret_cast<Freenect2FrameListener*>(fl_ref);
     delete fl;
+}
+
+Freenect2FrameRef freenect2_frame_create(
+    size_t width, size_t height, size_t bytes_per_pixel)
+{
+    return reinterpret_cast<Freenect2FrameRef>(
+        new Frame(width, height, bytes_per_pixel));
 }
 
 void freenect2_frame_dispose(Freenect2FrameRef frame_ref)
@@ -199,10 +233,97 @@ uint32_t freenect2_frame_get_status(Freenect2FrameRef frame_ref)
     return frame->status;
 }
 
+void freenect2_frame_set_width(Freenect2FrameRef frame_ref, size_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->width = value;
+}
+
+void freenect2_frame_set_height(Freenect2FrameRef frame_ref, size_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->height = value;
+}
+
+void freenect2_frame_set_bytes_per_pixel(Freenect2FrameRef frame_ref, size_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->bytes_per_pixel = value;
+}
+
+void freenect2_frame_set_timestamp(Freenect2FrameRef frame_ref, uint32_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->timestamp = value;
+}
+
+void freenect2_frame_set_sequence(Freenect2FrameRef frame_ref, uint32_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->sequence = value;
+}
+
+void freenect2_frame_set_exposure(Freenect2FrameRef frame_ref, float value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->exposure = value;
+}
+
+void freenect2_frame_set_gain(Freenect2FrameRef frame_ref, float value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->gain = value;
+}
+
+void freenect2_frame_set_gamma(Freenect2FrameRef frame_ref, float value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->gamma = value;
+}
+
+void freenect2_frame_set_status(Freenect2FrameRef frame_ref, uint32_t value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->status = value;
+}
+
+void freenect2_frame_set_format(Freenect2FrameRef frame_ref, Freenect2FrameFormat value)
+{
+    Frame* frame = reinterpret_cast<Frame*>(frame_ref);
+    frame->format = static_cast<Frame::Format>(value);
+}
+
+
 Freenect2FrameFormat freenect2_frame_get_format(Freenect2FrameRef frame_ref)
 {
     Frame* frame = reinterpret_cast<Frame*>(frame_ref);
     return static_cast<Freenect2FrameFormat>(frame->format);
+}
+
+Freenect2RegistrationRef freenect2_registration_create(
+    IrCameraParams depth_p, ColorCameraParams rgb_p)
+{
+    return reinterpret_cast<Freenect2RegistrationRef>(
+        new Registration(depth_p, rgb_p));
+}
+
+void freenect2_registration_dispose(Freenect2RegistrationRef reg_ref)
+{
+    Registration* reg = reinterpret_cast<Registration*>(reg_ref);
+    delete reg;
+}
+
+void freenect2_registration_apply(
+    Freenect2RegistrationRef reg_ref, Freenect2FrameRef rgb_ref,
+    Freenect2FrameRef depth_ref, Freenect2FrameRef undistorted_ref,
+    Freenect2FrameRef registered_ref, int enable_filter)
+{
+    Registration* reg = reinterpret_cast<Registration*>(reg_ref);
+    Frame* rgb = reinterpret_cast<Frame*>(rgb_ref);
+    Frame* depth = reinterpret_cast<Frame*>(depth_ref);
+    Frame* undistorted = reinterpret_cast<Frame*>(undistorted_ref);
+    Frame* registered = reinterpret_cast<Frame*>(registered_ref);
+    reg->apply(rgb, depth, undistorted, registered, enable_filter);
 }
 
 }
@@ -225,6 +346,37 @@ typedef void *Freenect2Ref;
 typedef void *Freenect2DeviceRef;
 typedef void *Freenect2FrameRef;
 typedef void *Freenect2FrameListenerRef;
+typedef void *Freenect2RegistrationRef;
+
+typedef struct {
+    float fx, fy, cx, cy, k1, k2, k3, p1, p2;
+} IrCameraParams;
+
+typedef struct {
+    float fx, fy, cx, cy;
+    float shift_d, shift_m;
+    float mx_x3y0; // xxx
+    float mx_x0y3; // yyy
+    float mx_x2y1; // xxy
+    float mx_x1y2; // yyx
+    float mx_x2y0; // xx
+    float mx_x0y2; // yy
+    float mx_x1y1; // xy
+    float mx_x1y0; // x
+    float mx_x0y1; // y
+    float mx_x0y0; // 1
+
+    float my_x3y0; // xxx
+    float my_x0y3; // yyy
+    float my_x2y1; // xxy
+    float my_x1y2; // yyx
+    float my_x2y0; // xx
+    float my_x0y2; // yy
+    float my_x1y1; // xy
+    float my_x1y0; // x
+    float my_x0y1; // y
+    float my_x0y0; // 1
+} ColorCameraParams;
 
 Freenect2Ref freenect2_create(void);
 void freenect2_dispose(Freenect2Ref fn2_ref);
@@ -241,6 +393,12 @@ int freenect2_device_stop(Freenect2DeviceRef device_ref);
 int freenect2_device_close(Freenect2DeviceRef device_ref);
 void freenect2_device_set_color_frame_listener(
     Freenect2DeviceRef device_ref, Freenect2FrameListenerRef fl_ref);
+void freenect2_device_set_ir_and_depth_frame_listener(
+    Freenect2DeviceRef device_ref, Freenect2FrameListenerRef fl_ref);
+IrCameraParams freenect2_device_get_ir_camera_params(
+    Freenect2DeviceRef device_ref);
+ColorCameraParams freenect2_device_get_color_camera_params(
+    Freenect2DeviceRef device_ref);
 
 typedef int (*Freenect2FrameListenerFunc) (
     Freenect2FrameType type, Freenect2FrameRef frame, void *user_data);
@@ -251,7 +409,10 @@ void freenect2_frame_listener_dispose(Freenect2FrameListenerRef fl_ref);
 extern "Python" int frame_listener_callback(
     Freenect2FrameType type, Freenect2FrameRef frame, void *user_data);
 
+Freenect2FrameRef freenect2_frame_create(
+    size_t width, size_t height, size_t bytes_per_pixel);
 void freenect2_frame_dispose(Freenect2FrameRef frame_ref);
+
 size_t freenect2_frame_get_width(Freenect2FrameRef frame_ref);
 size_t freenect2_frame_get_height(Freenect2FrameRef frame_ref);
 size_t freenect2_frame_get_bytes_per_pixel(Freenect2FrameRef frame_ref);
@@ -263,6 +424,25 @@ float freenect2_frame_get_gain(Freenect2FrameRef frame_ref);
 float freenect2_frame_get_gamma(Freenect2FrameRef frame_ref);
 uint32_t freenect2_frame_get_status(Freenect2FrameRef frame_ref);
 Freenect2FrameFormat freenect2_frame_get_format(Freenect2FrameRef frame_ref);
+
+void freenect2_frame_set_width(Freenect2FrameRef frame_ref, size_t value);
+void freenect2_frame_set_height(Freenect2FrameRef frame_ref, size_t value);
+void freenect2_frame_set_bytes_per_pixel(Freenect2FrameRef frame_ref, size_t value);
+void freenect2_frame_set_timestamp(Freenect2FrameRef frame_ref, uint32_t value);
+void freenect2_frame_set_sequence(Freenect2FrameRef frame_ref, uint32_t value);
+void freenect2_frame_set_exposure(Freenect2FrameRef frame_ref, float value);
+void freenect2_frame_set_gain(Freenect2FrameRef frame_ref, float value);
+void freenect2_frame_set_gamma(Freenect2FrameRef frame_ref, float value);
+void freenect2_frame_set_status(Freenect2FrameRef frame_ref, uint32_t value);
+void freenect2_frame_set_format(Freenect2FrameRef frame_ref, Freenect2FrameFormat value);
+
+Freenect2RegistrationRef freenect2_registration_create(
+    IrCameraParams depth_p, ColorCameraParams rgb_p);
+void freenect2_registration_dispose(Freenect2RegistrationRef reg_ref);
+void freenect2_registration_apply(
+    Freenect2RegistrationRef reg_ref, Freenect2FrameRef rgb_ref,
+    Freenect2FrameRef depth_ref, Freenect2FrameRef undistorted_ref,
+    Freenect2FrameRef registered_ref, int enable_filter);
 ''')
 
 if __name__ == "__main__":
