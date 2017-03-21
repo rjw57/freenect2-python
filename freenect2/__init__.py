@@ -520,9 +520,9 @@ class Registration(object):
             rgb (:py:class:`Frame`): if not-None, the RGB data corresponding to
                 the depth frame.
         """
-        undistorted_array = undistorted.to_array()
-        rows, cols = np.nonzero(undistorted_array)
+        cols, rows = np.meshgrid(np.arange(undistorted.width), np.arange(undistorted.height))
         xs, ys, zs = self.get_points_xyz(undistorted, rows, cols)
+        n_points = int(np.product(xs.shape))
 
         print('VERSION .7', file=file_object)
 
@@ -531,23 +531,23 @@ class Registration(object):
             print('SIZE 4 4 4', file=file_object)
             print('TYPE F F F', file=file_object)
             print('COUNT 1 1 1', file=file_object)
-            data = np.vstack((-xs, -ys, -zs)).T
+            data = np.vstack((-xs.flatten(), -ys.flatten(), -zs.flatten())).T
         else:
             print('FIELDS x y z rgb', file=file_object)
             print('SIZE 4 4 4 4', file=file_object)
             print('TYPE F F F I', file=file_object)
             print('COUNT 1 1 1 1', file=file_object)
-            bgrx = (registered.to_array()[rows, cols, ...]).astype(np.uint32)
-            rgbs = bgrx[:, 0] + (bgrx[:, 1] << 8) + (bgrx[:, 2] << 16)
-            data = np.vstack((-xs, -ys, -zs, rgbs)).T
+            bgrx = registered.to_array().astype(np.uint32)
+            rgbs = bgrx[..., 0] + (bgrx[..., 1] << 8) + (bgrx[..., 2] << 16)
+            data = np.vstack((-xs.flatten(), -ys.flatten(), -zs.flatten(), rgbs.flatten())).T
 
-        print('WIDTH {}'.format(xs.shape[0]), file=file_object)
-        print('HEIGHT 1', file=file_object)
+        print('WIDTH {}'.format(undistorted.width), file=file_object)
+        print('HEIGHT {}'.format(undistorted.height), file=file_object)
         print('VIEWPOINT 0 0 0 1 0 0 0', file=file_object)
-        print('POINTS {}'.format(xs.shape[0]), file=file_object)
+        print('POINTS {}'.format(n_points), file=file_object)
         print('DATA ascii', file=file_object)
 
-        assert data.shape[0] == xs.shape[0]
+        assert data.shape[0] == n_points
 
         for row in data:
             print(' '.join([str(f) for f in row]), file=file_object)
