@@ -2,7 +2,7 @@ libfreenect2 Python bindings
 ============================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Contents:
 
 The :py:mod:`freenect2` module provides a Python interface to the `libfreenect2
