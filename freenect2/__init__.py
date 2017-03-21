@@ -514,6 +514,10 @@ class Registration(object):
         coloured according to the image otherwise the points are left
         uncoloured.
 
+        .. note::
+
+            Under Python 3 the file object *must* be opened in binary mode.
+
         Args:
             file_object (file): A file object to write PCD data to
             undistorted (:py:class:`Frame`): the undistorted depth frame
@@ -524,30 +528,31 @@ class Registration(object):
         xs, ys, zs = self.get_points_xyz(undistorted, rows, cols)
         n_points = int(np.product(xs.shape))
 
-        print('VERSION .7', file=file_object)
+        file_object.write(b'VERSION .7\n')
 
         if registered is None:
-            print('FIELDS x y z', file=file_object)
-            print('SIZE 4 4 4', file=file_object)
-            print('TYPE F F F', file=file_object)
-            print('COUNT 1 1 1', file=file_object)
-            data = np.vstack((-xs.flatten(), -ys.flatten(), -zs.flatten())).T
+            file_object.write(
+                b'FIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\n')
+            data = np.zeros((n_points, 3), order='C', dtype=np.float32)
+            data[:, 0] = -xs.flatten()
+            data[:, 1] = -ys.flatten()
+            data[:, 2] = -zs.flatten()
         else:
-            print('FIELDS x y z rgb', file=file_object)
-            print('SIZE 4 4 4 4', file=file_object)
-            print('TYPE F F F I', file=file_object)
-            print('COUNT 1 1 1 1', file=file_object)
+            file_object.write(
+                b'FIELDS x y z rgb\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n')
             bgrx = registered.to_array().astype(np.uint32)
-            rgbs = bgrx[..., 0] + (bgrx[..., 1] << 8) + (bgrx[..., 2] << 16)
-            data = np.vstack((-xs.flatten(), -ys.flatten(), -zs.flatten(), rgbs.flatten())).T
+            rgbs = (
+                bgrx[..., 0] + (bgrx[..., 1] << 8) + (bgrx[..., 2] << 16)
+            ).view(np.float32)
+            data = np.zeros((n_points, 4), order='C', dtype=np.float32)
+            data[:, 0] = -xs.flatten()
+            data[:, 1] = -ys.flatten()
+            data[:, 2] = -zs.flatten()
+            data[:, 3] = rgbs.flatten()
 
-        print('WIDTH {}'.format(undistorted.width), file=file_object)
-        print('HEIGHT {}'.format(undistorted.height), file=file_object)
-        print('VIEWPOINT 0 0 0 1 0 0 0', file=file_object)
-        print('POINTS {}'.format(n_points), file=file_object)
-        print('DATA ascii', file=file_object)
-
-        assert data.shape[0] == n_points
-
-        for row in data:
-            print(' '.join([str(f) for f in row]), file=file_object)
+        file_object.write('WIDTH {}\n'.format(undistorted.width).encode())
+        file_object.write('HEIGHT {}\n'.format(undistorted.height).encode())
+        file_object.write(b'VIEWPOINT 0 0 0 1 0 0 0\n')
+        file_object.write('POINTS {}\n'.format(n_points).encode())
+        file_object.write(b'DATA binary\n')
+        file_object.write(data.tobytes())
