@@ -7,6 +7,7 @@ with open(os.path.join(this_dir, 'requirements.txt')) as fobj:
 
 setup(
     name='freenect2',
+    description='Python bindings for the libfreenect2 Kinect for Windows driver',
     version='0.2.0',
     author='Rich Wareham',
     author_email='rich.freenect2@richwareham.com',
