@@ -7,6 +7,8 @@ with open(os.path.join(this_dir, 'requirements.txt')) as fobj:
 
 setup(
     name='freenect2',
+    version='0.2.0',
+    author='Rich Wareham',
     packages=find_packages(),
     install_requires=install_requires,
     setup_requires=['cffi>=1.0.0'],
