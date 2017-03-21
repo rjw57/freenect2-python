@@ -9,6 +9,8 @@ setup(
     name='freenect2',
     version='0.2.0',
     author='Rich Wareham',
+    author_email='rich.freenect2@richwareham.com',
+    url='https://github.com/rjw57/freenect2-python',
     packages=find_packages(),
     install_requires=install_requires,
     setup_requires=['cffi>=1.0.0'],
