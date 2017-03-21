@@ -1,6 +1,9 @@
 freenect2: Python bindings to libfreenect2
 ==========================================
 
+.. image:: https://travis-ci.org/rjw57/freenect2-python.svg?branch=master
+    :target: https://travis-ci.org/rjw57/freenect2-python
+
 The freenect2 module provides a Python interface to the `libfreenect2
 <https://github.com/OpenKinect/libfreenect2>`_ library.  The libfreenect2
 library provides a library allowing depth and RGB data to be extracted from a
