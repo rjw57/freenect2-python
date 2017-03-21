@@ -3,11 +3,15 @@ freenect2: Python bindings to libfreenect2
 
 .. image:: https://travis-ci.org/rjw57/freenect2-python.svg?branch=master
     :target: https://travis-ci.org/rjw57/freenect2-python
+.. image:: https://zenodo.org/badge/85711795.svg
+    :target: https://zenodo.org/badge/latestdoi/85711795
 
 The freenect2 module provides a Python interface to the `libfreenect2
 <https://github.com/OpenKinect/libfreenect2>`_ library.  The libfreenect2
 library provides a library allowing depth and RGB data to be extracted from a
 Kinect for Windows v2 (K4W2) device.
+
+If using this library in an academic context, please use the DOI linked above.
 
 Although a lot of libfreenect2 functionality is exposed, simple "single grab"
 usage of freenect2 should be simple. For example, here is how to grab a single
