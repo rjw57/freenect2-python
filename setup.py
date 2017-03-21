@@ -8,5 +8,5 @@ setup(
     packages=find_packages(),
     install_requires=install_requires,
     setup_requires=['cffi>=1.0.0'],
-    cffi_modules=['freenect2_build.py:ffibuilder'],
+    cffi_modules=['binding/freenect2_build.py:ffibuilder'],
 )
