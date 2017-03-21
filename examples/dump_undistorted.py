@@ -1,18 +1,14 @@
-from time import sleep
 from freenect2 import Device, FrameType
 import numpy as np
 
 def main():
     device = Device()
     frames = {}
-    def frame_listener(type_, frame):
-        frames[type_] = frame
-
-    device.color_frame_listener = frame_listener
-    device.ir_and_depth_frame_listener = frame_listener
     with device.running():
-        while FrameType.Color not in frames or FrameType.Depth not in frames:
-            sleep(0.1)
+        for type_, frame in device:
+            frames[type_] = frame
+            if FrameType.Color in frames and FrameType.Depth in frames:
+                break
 
     rgb, depth = frames[FrameType.Color], frames[FrameType.Depth]
     undistorted, registered = device.registration.apply(rgb, depth)
