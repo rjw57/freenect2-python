@@ -11,3 +11,4 @@ __pycache__
 output.pcd
 dist
 .tox
+freenect2/_freenect2.*
