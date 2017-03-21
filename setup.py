@@ -1,6 +1,8 @@
+import os
 from setuptools import setup, find_packages
 
-with open('requirements.txt') as fobj:
+this_dir = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_dir, 'requirements.txt')) as fobj:
     install_requires = fobj.readlines()
 
 setup(
