@@ -8,15 +8,18 @@ this_dir = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(this_dir, 'freenect2-c.cpp')) as fobj:
     binding_source = fobj.read()
 
-compile_args = codecs.decode(subprocess.check_output(
-    'pkg-config freenect2 --libs --cflags'.split()), 'ascii')
+extra_compile_args = codecs.decode(subprocess.check_output(
+    'pkg-config freenect2 --cflags'.split()), 'ascii').split()
+extra_link_args = codecs.decode(subprocess.check_output(
+    'pkg-config freenect2 --libs'.split()), 'ascii').split()
 
 ffibuilder = FFI()
 
 ffibuilder.set_source(
     "freenect2._freenect2", binding_source,
     libraries=['freenect2'], source_extension='.cpp',
-    extra_compile_args=compile_args.split())
+    extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args)
 
 ffibuilder.cdef(r'''
 typedef enum {
