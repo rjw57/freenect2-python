@@ -26,3 +26,10 @@ depth frame and save it to a grayscale JPEG:
                 norm_im = im_eval('convert(I / 16, "L")', I=frame.to_image())
                 norm_im.save('depth.jpg')
                 break
+
+Getting started
+---------------
+
+Installation instructions and reference documentation are available on the
+associated `documentation <https://rjw57.github.io/freenect2-python/>`_ pages.
+
