@@ -39,6 +39,7 @@ typedef void *Freenect2RegistrationRef;
 
 typedef struct {
     float fx, fy, cx, cy, k1, k2, k3, p1, p2;
+    ...;
 } IrCameraParams;
 
 typedef struct {
@@ -65,6 +66,7 @@ typedef struct {
     float my_x1y0; // x
     float my_x0y1; // y
     float my_x0y0; // 1
+    ...;
 } ColorCameraParams;
 
 Freenect2Ref freenect2_create(void);
@@ -131,7 +133,8 @@ void freenect2_registration_dispose(Freenect2RegistrationRef reg_ref);
 void freenect2_registration_apply(
     Freenect2RegistrationRef reg_ref, Freenect2FrameRef rgb_ref,
     Freenect2FrameRef depth_ref, Freenect2FrameRef undistorted_ref,
-    Freenect2FrameRef registered_ref, int enable_filter);
+    Freenect2FrameRef registered_ref, int enable_filter,
+    Freenect2FrameRef big_depth_ref);
 void freenect2_registration_get_points_xyz(
     Freenect2RegistrationRef reg_ref, Freenect2FrameRef undistorted_ref,
     const int32_t* rows, const int32_t* cols, size_t n_points,

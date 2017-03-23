@@ -307,15 +307,17 @@ static void freenect2_registration_dispose(Freenect2RegistrationRef reg_ref)
 static void freenect2_registration_apply(
     Freenect2RegistrationRef reg_ref, Freenect2FrameRef rgb_ref,
     Freenect2FrameRef depth_ref, Freenect2FrameRef undistorted_ref,
-    Freenect2FrameRef registered_ref, int enable_filter)
+    Freenect2FrameRef registered_ref, int enable_filter,
+    Freenect2FrameRef big_depth_ref)
 {
     Registration* reg = reinterpret_cast<Registration*>(reg_ref);
     Frame* rgb = reinterpret_cast<Frame*>(rgb_ref);
     Frame* depth = reinterpret_cast<Frame*>(depth_ref);
     Frame* undistorted = reinterpret_cast<Frame*>(undistorted_ref);
     Frame* registered = reinterpret_cast<Frame*>(registered_ref);
+    Frame* big_depth = reinterpret_cast<Frame*>(big_depth_ref);
     reg->apply(rgb, depth, undistorted, registered,
-        (enable_filter != 0) ? true : false);
+        (enable_filter != 0) ? true : false, big_depth);
 }
 
 static void freenect2_registration_get_points_xyz(

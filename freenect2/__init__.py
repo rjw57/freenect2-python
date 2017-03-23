@@ -1,3 +1,65 @@
+"""
+.. py:class:: ColorCameraParams
+
+    Color camera intrinsic calibration.
+
+    .. py:attribute:: fx
+
+        Focal length for x-axis (pixels)
+
+    .. py:attribute:: fy
+
+        Focal length for y-axis (pixels)
+
+    .. py:attribute:: cx
+
+        Principal point for x-axis (pixels)
+
+    .. py:attribute:: cy
+
+        Principal point for y-axis (pixels)
+
+.. py:class:: IrCameraParams
+
+    IR/depth camera intrinsic calibration.
+
+    .. py:attribute:: fx
+
+        Focal length for x-axis (pixels)
+
+    .. py:attribute:: fy
+
+        Focal length for y-axis (pixels)
+
+    .. py:attribute:: cx
+
+        Principal point for x-axis (pixels)
+
+    .. py:attribute:: cy
+
+        Principal point for y-axis (pixels)
+
+    .. py:attribute:: k1
+
+        Radial distortion co-efficient, 1st-order
+
+    .. py:attribute:: k2
+
+        Radial distortion co-efficient, 2nd-order
+
+    .. py:attribute:: k3
+
+        Radial distortion co-efficient, 3rd-order
+
+    .. py:attribute:: p1
+
+        Tangential distortion co-efficient
+
+    .. py:attribute:: p2
+
+        Tangential distortion co-efficient
+
+"""
 from __future__ import print_function
 
 from contextlib import contextmanager
@@ -106,6 +168,18 @@ class Device(object):
     Raises:
         :py:class:`.NoDeviceError` if there is no default device to open.
 
+    .. py:attribute:: color_camera_params
+
+        (:py:class:`.ColorCameraParams` or None) A structure describing the RGB
+        camera factory calibration. Before the :py:func:`.start` is called, this
+        is *None* since the device only reports calibration when capture begins.
+
+    .. py:attribute:: ir_camera_params
+
+        (:py:class:`.IrCameraParams` or None) A structure describing the IR
+        camera factory calibration. Before the :py:func:`.start` is called, this
+        is *None* since the device only reports calibration when capture begins.
+
     """
 
     def __init__(self, c_object=None):
@@ -121,6 +195,9 @@ class Device(object):
         self.color_frame_listener = self._default_listener
         self.ir_and_depth_frame_listener = self._default_listener
 
+        self.color_camera_params = None
+        self.ir_camera_params = None
+
     def start(self, frame_listener=None):
         """Start depth, IR and RGB streams.
 
@@ -135,6 +212,9 @@ class Device(object):
             self.color_frame_listener = frame_listener
             self.ir_and_depth_frame_listener = frame_listener
         lib.freenect2_device_start(self._c_object)
+
+        self.color_camera_params = lib.freenect2_device_get_color_camera_params(self._c_object)
+        self.ir_camera_params = lib.freenect2_device_get_ir_camera_params(self._c_object)
 
     def stop(self):
         """Stop any running streams."""
@@ -181,18 +261,6 @@ class Device(object):
             self._registration = Registration(
                 self.ir_camera_params, self.color_camera_params)
         return self._registration
-
-    @property
-    def ir_camera_params(self):
-        """A structure describing the factory calibrated parameters of the IR
-        camera. See the libfreenect2 documentation."""
-        return lib.freenect2_device_get_ir_camera_params(self._c_object)
-
-    @property
-    def color_camera_params(self):
-        """A structure describing the factory calibrated parameters of the RGB
-        camera. See the libfreenect2 documentation."""
-        return lib.freenect2_device_get_color_camera_params(self._c_object)
 
     @property
     def color_frame_listener(self):
@@ -434,7 +502,7 @@ class Registration(object):
             lib.freenect2_registration_create(depth_p, rgb_p),
             lib.freenect2_registration_dispose)
 
-    def apply(self, rgb, depth, enable_filter=True):
+    def apply(self, rgb, depth, enable_filter=True, with_big_depth=False):
         """Take an RGB and Depth image and return tuple with the undistorted
         depth image and color image rectified onto depth.
 
@@ -443,6 +511,8 @@ class Registration(object):
             depth (:py:class:`.Frame`): Depth frame received from device
             enable_filter (bool): If true, filter out pixels not visible in
                 both cameras.
+            with_big_depth (bool): If true, also return a 1920x1082 mapping of
+                depth onto the color map. The top and bottom rows are blank.
 
         Returns:
             A :py:class:`Frame` pair representing the undistorted depth and
@@ -453,12 +523,25 @@ class Registration(object):
         undistorted.format = depth.format
         registered = Frame.create(512, 424, 4)
         registered.format = rgb.format
+
+        big_depth, big_depth_ref = None, ffi.NULL
+        if with_big_depth:
+            big_depth = Frame.create(1920, 1082, 4)
+            big_depth.format = depth.format
+            big_depth_ref = big_depth._c_object
+
         lib.freenect2_registration_apply(
             self._c_object,
             rgb._c_object, depth._c_object, undistorted._c_object,
-            registered._c_object, 1 if enable_filter else 0
+            registered._c_object, 1 if enable_filter else 0,
+            big_depth_ref
         )
-        return undistorted, registered
+
+        rvs = [undistorted, registered]
+        if with_big_depth:
+            rvs.append(big_depth)
+
+        return tuple(rvs)
 
     def get_points_xyz(self, undistorted, rows, cols):
         """Retrieve real-world co-ordinates corresponding to points in the
