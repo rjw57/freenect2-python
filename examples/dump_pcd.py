@@ -20,8 +20,12 @@ with device.running():
 # Use the factory calibration to undistort the depth frame and register the RGB
 # frame onto it.
 rgb, depth = frames[FrameType.Color], frames[FrameType.Depth]
-undistorted, registered = device.registration.apply(rgb, depth)
+undistorted, registered, big_depth = device.registration.apply(
+    rgb, depth, with_big_depth=True)
 
 # Combine the depth and RGB data together into a single point cloud.
-with open('output.pcd', 'w') as fobj:
+with open('output.pcd', 'wb') as fobj:
     device.registration.write_pcd(fobj, undistorted, registered)
+
+with open('output_big.pcd', 'wb') as fobj:
+   device.registration.write_big_pcd(fobj, big_depth, rgb)

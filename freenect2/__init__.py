@@ -1,65 +1,3 @@
-"""
-.. py:class:: ColorCameraParams
-
-    Color camera intrinsic calibration.
-
-    .. py:attribute:: fx
-
-        Focal length for x-axis (pixels)
-
-    .. py:attribute:: fy
-
-        Focal length for y-axis (pixels)
-
-    .. py:attribute:: cx
-
-        Principal point for x-axis (pixels)
-
-    .. py:attribute:: cy
-
-        Principal point for y-axis (pixels)
-
-.. py:class:: IrCameraParams
-
-    IR/depth camera intrinsic calibration.
-
-    .. py:attribute:: fx
-
-        Focal length for x-axis (pixels)
-
-    .. py:attribute:: fy
-
-        Focal length for y-axis (pixels)
-
-    .. py:attribute:: cx
-
-        Principal point for x-axis (pixels)
-
-    .. py:attribute:: cy
-
-        Principal point for y-axis (pixels)
-
-    .. py:attribute:: k1
-
-        Radial distortion co-efficient, 1st-order
-
-    .. py:attribute:: k2
-
-        Radial distortion co-efficient, 2nd-order
-
-    .. py:attribute:: k3
-
-        Radial distortion co-efficient, 3rd-order
-
-    .. py:attribute:: p1
-
-        Tangential distortion co-efficient
-
-    .. py:attribute:: p2
-
-        Tangential distortion co-efficient
-
-"""
 from __future__ import print_function
 
 from contextlib import contextmanager
@@ -79,6 +17,8 @@ __all__ = (
     'FrameFormat',
     'Frame',
     'Registration',
+    'IrCameraParams',
+    'ColorCameraParams'
 )
 
 _FREENECT2_SINGLETON = None
@@ -159,6 +99,68 @@ class QueueFrameListener(object):
 
     def get(self, timeout=False):
         return self.queue.get(True, timeout)
+
+class ColorCameraParams(object):
+    """
+    Color camera intrinsic calibration.
+
+    .. py:attribute:: fx
+
+        Focal length for x-axis (pixels)
+
+    .. py:attribute:: fy
+
+        Focal length for y-axis (pixels)
+
+    .. py:attribute:: cx
+
+        Principal point for x-axis (pixels)
+
+    .. py:attribute:: cy
+
+        Principal point for y-axis (pixels)
+    """
+
+class IrCameraParams(object):
+    """
+    IR/depth camera intrinsic calibration.
+
+    .. py:attribute:: fx
+
+        Focal length for x-axis (pixels)
+
+    .. py:attribute:: fy
+
+        Focal length for y-axis (pixels)
+
+    .. py:attribute:: cx
+
+        Principal point for x-axis (pixels)
+
+    .. py:attribute:: cy
+
+        Principal point for y-axis (pixels)
+
+    .. py:attribute:: k1
+
+        Radial distortion co-efficient, 1st-order
+
+    .. py:attribute:: k2
+
+        Radial distortion co-efficient, 2nd-order
+
+    .. py:attribute:: k3
+
+        Radial distortion co-efficient, 3rd-order
+
+    .. py:attribute:: p1
+
+        Tangential distortion co-efficient
+
+    .. py:attribute:: p2
+
+        Tangential distortion co-efficient
+    """
 
 class Device(object):
     """Control a single device.
@@ -498,6 +500,8 @@ class Registration(object):
 
     """
     def __init__(self, depth_p, rgb_p):
+        self.depth_p = depth_p
+        self.rgb_p = rgb_p
         self._c_object = ffi.gc(
             lib.freenect2_registration_create(depth_p, rgb_p),
             lib.freenect2_registration_dispose)
@@ -573,23 +577,46 @@ class Registration(object):
             ffi.cast('float*', ys.ctypes.data),
             ffi.cast('float*', zs.ctypes.data)
         )
-        return xs, ys, zs
+        return xs, ys, -zs
 
     def get_points_xyz_array(self, undistorted):
         """Return a 3D array of x, y, z points for each point in an undistorted
         frame. Invalid points are Nan-ed.
 
         Args:
-            undistorted (:py:class:`Frame`): the undistorted depth frame
+            undistorted (:py:class:`.Frame`): the undistorted depth frame
 
         Returns:
-            A 512x424x3 array of 3D points. The last dimension corresponding to
+            A 424x512x3 array of 3D points. The last dimension corresponding to
             x, y and z.
 
         """
         cols, rows = np.meshgrid(
             np.arange(undistorted.width), np.arange(undistorted.height))
         return np.dstack(self.get_points_xyz(undistorted, rows, cols))
+
+    def get_big_points_xyz_array(self, big_depth):
+        """Like :py:meth:`.get_points_xyz_array` but operates on the "big" depth
+        map which can be returned from :py:meth:`.apply`.
+
+        Args:
+            big_depth (:py:class:`.Frame`): big 1920x1082 frame returned from
+                :py:meth:`.apply`.
+
+        Returns:
+            A 1082x1920x3 array of 3D points. The last dimension corresponding
+            to x, y and z.
+
+        """
+        points = np.ones((big_depth.height, big_depth.width, 3), dtype=np.float32)
+        points[..., 2] = 1e-3 * big_depth.to_array()
+        points[..., 0], points[..., 1] = np.meshgrid(
+            (np.arange(1920) - self.rgb_p.cx) / self.rgb_p.fx,
+            (1080-np.arange(-1, 1081) - self.rgb_p.cy) / self.rgb_p.fy)
+        points[..., 0] *= points[..., 2]
+        points[..., 1] *= points[..., 2]
+
+        return points
 
     def write_pcd(self, file_object, undistorted, registered=None):
         """Write depth map and (optionally) RGB data to libpcl-compatible PCD
@@ -604,38 +631,78 @@ class Registration(object):
         Args:
             file_object (file): A file object to write PCD data to
             undistorted (:py:class:`Frame`): the undistorted depth frame
-            rgb (:py:class:`Frame`): if not-None, the RGB data corresponding to
+            registered (:py:class:`Frame`): if not-None, the RGB data corresponding to
                 the depth frame.
         """
-        cols, rows = np.meshgrid(np.arange(undistorted.width), np.arange(undistorted.height))
-        xs, ys, zs = self.get_points_xyz(undistorted, rows, cols)
-        n_points = int(np.product(xs.shape))
+        write_pcd(
+            file_object, self.get_points_xyz_array(undistorted), registered)
 
-        file_object.write(b'VERSION .7\n')
+    def write_big_pcd(self, file_object, big_depth, rgb=None):
+        """Write depth map and (optionally) RGB data to libpcl-compatible PCD
+        format file. Works like :py:meth:`.write_pcd` except that it works on
+        the "big" depth map which can be returned from :py:meth:`apply`. If the
+        RGB frame is present, each point is coloured according to the image
+        otherwise the points are left uncoloured.
 
-        if registered is None:
-            file_object.write(
-                b'FIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\n')
-            data = np.zeros((n_points, 3), order='C', dtype=np.float32)
-            data[:, 0] = -xs.flatten()
-            data[:, 1] = -ys.flatten()
-            data[:, 2] = -zs.flatten()
-        else:
-            file_object.write(
-                b'FIELDS x y z rgb\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n')
-            bgrx = registered.to_array().astype(np.uint32)
-            rgbs = (
-                bgrx[..., 0] + (bgrx[..., 1] << 8) + (bgrx[..., 2] << 16)
-            ).view(np.float32)
-            data = np.zeros((n_points, 4), order='C', dtype=np.float32)
-            data[:, 0] = -xs.flatten()
-            data[:, 1] = -ys.flatten()
-            data[:, 2] = -zs.flatten()
-            data[:, 3] = rgbs.flatten()
+        .. note::
 
-        file_object.write('WIDTH {}\n'.format(undistorted.width).encode())
-        file_object.write('HEIGHT {}\n'.format(undistorted.height).encode())
-        file_object.write(b'VIEWPOINT 0 0 0 1 0 0 0\n')
-        file_object.write('POINTS {}\n'.format(n_points).encode())
-        file_object.write(b'DATA binary\n')
-        file_object.write(data.tobytes())
+            Under Python 3 the file object *must* be opened in binary mode.
+
+        Args:
+            file_object (file): A file object to write PCD data to
+            big_depth (:py:class:`Frame`): the 1920x1082 de[th frame
+            registered (:py:class:`Frame`): if not-None, the RGB data from the
+                color camera
+        """
+        write_pcd(
+            file_object,
+            self.get_big_points_xyz_array(big_depth)[1:-1, ...], rgb)
+
+def write_pcd(file_object, points, rgb=None):
+    """Write 3d points and (optionally) RGB data to libpcl-compatible PCD
+    format file. If the registered RGB frame is present, each point is
+    coloured according to the image otherwise the points are left
+    uncoloured.
+
+    .. note::
+
+        Under Python 3 the file object *must* be opened in binary mode.
+
+    Args:
+        file_object (file): A file object to write PCD data to
+        points (array): A NxMx3 array of 3d points.
+        rgb (:py:class:`Frame`): if not-None, the RGB frame corresponding to
+            the points array. Assumed to be NxM.
+    """
+    assert len(points.shape) == 3
+    xs, ys, zs = points[..., 0], points[..., 1], points[..., 2]
+    n_points = int(np.product(points.shape[:-1]))
+
+    file_object.write(b'VERSION .7\n')
+
+    if rgb is None:
+        file_object.write(
+            b'FIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\n')
+        data = np.zeros((n_points, 3), order='C', dtype=np.float32)
+        data[:, 0] = xs.flatten()
+        data[:, 1] = ys.flatten()
+        data[:, 2] = zs.flatten()
+    else:
+        file_object.write(
+            b'FIELDS x y z rgb\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n')
+        bgrx = rgb.to_array().astype(np.uint32)
+        rgbs = (
+            bgrx[..., 0] + (bgrx[..., 1] << 8) + (bgrx[..., 2] << 16)
+        ).view(np.float32)
+        data = np.zeros((n_points, 4), order='C', dtype=np.float32)
+        data[:, 0] = xs.flatten()
+        data[:, 1] = ys.flatten()
+        data[:, 2] = zs.flatten()
+        data[:, 3] = rgbs.flatten()
+
+    file_object.write('WIDTH {}\n'.format(points.shape[1]).encode())
+    file_object.write('HEIGHT {}\n'.format(points.shape[0]).encode())
+    file_object.write(b'VIEWPOINT 0 0 0 1 0 0 0\n')
+    file_object.write('POINTS {}\n'.format(n_points).encode())
+    file_object.write(b'DATA binary\n')
+    file_object.write(data.tobytes())
