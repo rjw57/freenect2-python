@@ -1,0 +1,770 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>freenect2 &#8212; freenect2 0.2.3 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="freenect2">
+<h1>freenect2<a class="headerlink" href="#freenect2" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-freenect2" title="freenect2"><code class="xref py py-mod docutils literal"><span class="pre">freenect2</span></code></a> module provides a Python interface to the <a class="reference external" href="https://github.com/OpenKinect/libfreenect2">libfreenect2</a> library. The libfreenect2 library
+provides a library allowing depth and RGB data to be extracted from a Kinect for
+Windows v2 (K4W2) device.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>libfreenect2 must be installed prior to building this module. See the
+<a class="reference external" href="https://github.com/OpenKinect/libfreenect2/blob/master/README.md#installation">installation instructions</a>
+provided by libfreenect2. The following is a brief summary of the required
+actions:</p>
+<div class="code console highlight-default"><div class="highlight"><pre><span></span>$ git clone https://github.com/OpenKinect/libfreenect2
+...
+$ cd libfreenect2; mkdir build; cd build
+$ cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local .. &amp;&amp; make all install
+...
+$ export PKG_CONFIG_PATH=$HOME/.local/lib/pkgconfig
+$ pip install --user freenect2
+</pre></div>
+</div>
+<div class="section" id="pkg-config-errors">
+<h3>pkg-config errors<a class="headerlink" href="#pkg-config-errors" title="Permalink to this headline">¶</a></h3>
+<p>The libfreenect2 library uses pkg-config to record where it is installed on the
+system. If you install libfreenect2 manually as outlined above you will need to
+set the <cite>PKG_CONFIG_PATH</cite> environment variable.</p>
+</div>
+</div>
+<div class="section" id="simple-usage">
+<h2>Simple usage<a class="headerlink" href="#simple-usage" title="Permalink to this headline">¶</a></h2>
+<p>The library is intended to provide an easy to use Pythonic interface to
+libfreenect2. As an example of library usage, here is a simple infrared (IR)
+camera which can be used to capture an image from the Kinect’s build in IR
+camera:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Simple IR camera using freenect2. Saves captured IR image</span>
+<span class="sd">to output.jpg.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># Import parts of freenect2 we&#39;re going to use</span>
+<span class="kn">from</span> <span class="nn">freenect2</span> <span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">FrameType</span>
+
+<span class="c1"># We use numpy to process the raw IR frame</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c1"># We use the Pillow library for saving the captured image</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="c1"># Open default device</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">Device</span><span class="p">()</span>
+
+<span class="c1"># Start the device</span>
+<span class="k">with</span> <span class="n">device</span><span class="o">.</span><span class="n">running</span><span class="p">():</span>
+    <span class="c1"># For each received frame...</span>
+    <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">device</span><span class="p">:</span>
+        <span class="c1"># ...stop only when we get an IR frame</span>
+        <span class="k">if</span> <span class="n">type_</span> <span class="ow">is</span> <span class="n">FrameType</span><span class="o">.</span><span class="n">Ir</span><span class="p">:</span>
+            <span class="k">break</span>
+
+<span class="c1"># Outside of the &#39;with&#39; block, the device has been stopped again</span>
+
+<span class="c1"># The received IR frame is in the range 0 -&gt; 65535. Normalise the</span>
+<span class="c1"># range to 0 -&gt; 1 and take square root as a simple form of gamma</span>
+<span class="c1"># correction.</span>
+<span class="n">ir_image</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">to_array</span><span class="p">()</span>
+<span class="n">ir_image</span> <span class="o">/=</span> <span class="n">ir_image</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">ir_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ir_image</span><span class="p">)</span>
+
+<span class="c1"># Use Pillow to save the IR image.</span>
+<span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="mi">256</span> <span class="o">*</span> <span class="n">ir_image</span><span class="p">)</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;output.jpg&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The library also supports extracting real-world 3D co-ordinates from the depth
+maps and saving <a class="reference external" href="http://pointclouds.org/">libpcl</a>-compatible PCD files:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Capture a single RGB and depth frame and save them to output.pcd in</span>
+<span class="sd">the libpcl PCD format. View the resulting cloud with:</span>
+
+<span class="sd">    pcl_viewer output.pcd</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">freenect2</span> <span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">FrameType</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c1"># Open the default device and capture a color and depth frame.</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">Device</span><span class="p">()</span>
+<span class="n">frames</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">with</span> <span class="n">device</span><span class="o">.</span><span class="n">running</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">device</span><span class="p">:</span>
+        <span class="n">frames</span><span class="p">[</span><span class="n">type_</span><span class="p">]</span> <span class="o">=</span> <span class="n">frame</span>
+        <span class="k">if</span> <span class="n">FrameType</span><span class="o">.</span><span class="n">Color</span> <span class="ow">in</span> <span class="n">frames</span> <span class="ow">and</span> <span class="n">FrameType</span><span class="o">.</span><span class="n">Depth</span> <span class="ow">in</span> <span class="n">frames</span><span class="p">:</span>
+            <span class="k">break</span>
+
+<span class="c1"># Use the factory calibration to undistort the depth frame and register the RGB</span>
+<span class="c1"># frame onto it.</span>
+<span class="n">rgb</span><span class="p">,</span> <span class="n">depth</span> <span class="o">=</span> <span class="n">frames</span><span class="p">[</span><span class="n">FrameType</span><span class="o">.</span><span class="n">Color</span><span class="p">],</span> <span class="n">frames</span><span class="p">[</span><span class="n">FrameType</span><span class="o">.</span><span class="n">Depth</span><span class="p">]</span>
+<span class="n">undistorted</span><span class="p">,</span> <span class="n">registered</span><span class="p">,</span> <span class="n">big_depth</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+    <span class="n">rgb</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">with_big_depth</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Combine the depth and RGB data together into a single point cloud.</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;output.pcd&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+    <span class="n">device</span><span class="o">.</span><span class="n">registration</span><span class="o">.</span><span class="n">write_pcd</span><span class="p">(</span><span class="n">fobj</span><span class="p">,</span> <span class="n">undistorted</span><span class="p">,</span> <span class="n">registered</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;output_big.pcd&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+   <span class="n">device</span><span class="o">.</span><span class="n">registration</span><span class="o">.</span><span class="n">write_big_pcd</span><span class="p">(</span><span class="n">fobj</span><span class="p">,</span> <span class="n">big_depth</span><span class="p">,</span> <span class="n">rgb</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="module-freenect2">
+<span id="reference"></span><h2>Reference<a class="headerlink" href="#module-freenect2" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="freenect2.NoDeviceError">
+<em class="property">exception </em><code class="descclassname">freenect2.</code><code class="descname">NoDeviceError</code><a class="headerlink" href="#freenect2.NoDeviceError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised by <a class="reference internal" href="#freenect2.Device" title="freenect2.Device"><code class="xref py py-class docutils literal"><span class="pre">Device</span></code></a> when there is no default device to open.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="freenect2.NoFrameReceivedError">
+<em class="property">exception </em><code class="descclassname">freenect2.</code><code class="descname">NoFrameReceivedError</code><a class="headerlink" href="#freenect2.NoFrameReceivedError" title="Permalink to this definition">¶</a></dt>
+<dd><p>With the default frame listener this is raised when no frame has been
+received from the device within a set time.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.Device">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">Device</code><span class="sig-paren">(</span><em>c_object=None</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Control a single device.</p>
+<p>If called with no arguments, the default device is opened.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#freenect2.NoDeviceError" title="freenect2.NoDeviceError"><code class="xref py py-class docutils literal"><span class="pre">NoDeviceError</span></code></a> if there is no default device to open.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="freenect2.Device.color_camera_params">
+<code class="descname">color_camera_params</code><a class="headerlink" href="#freenect2.Device.color_camera_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<a class="reference internal" href="#freenect2.ColorCameraParams" title="freenect2.ColorCameraParams"><code class="xref py py-class docutils literal"><span class="pre">ColorCameraParams</span></code></a> or None) A structure describing the RGB
+camera factory calibration. Before the <code class="xref py py-func docutils literal"><span class="pre">start()</span></code> is called, this
+is <em>None</em> since the device only reports calibration when capture begins.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Device.ir_camera_params">
+<code class="descname">ir_camera_params</code><a class="headerlink" href="#freenect2.Device.ir_camera_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<a class="reference internal" href="#freenect2.IrCameraParams" title="freenect2.IrCameraParams"><code class="xref py py-class docutils literal"><span class="pre">IrCameraParams</span></code></a> or None) A structure describing the IR
+camera factory calibration. Before the <code class="xref py py-func docutils literal"><span class="pre">start()</span></code> is called, this
+is <em>None</em> since the device only reports calibration when capture begins.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Device.close">
+<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the device and free any associated resources.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Device.color_frame_listener">
+<code class="descname">color_frame_listener</code><a class="headerlink" href="#freenect2.Device.color_frame_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>A callable called whenever a new color frame arrives from the
+device. The callable should take two positional arguments, the frame
+type (an instance of <a class="reference internal" href="#freenect2.FrameType" title="freenect2.FrameType"><code class="xref py py-class docutils literal"><span class="pre">FrameType</span></code></a>) and the frame itself (an
+instance of <a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Device.get_next_frame">
+<code class="descname">get_next_frame</code><span class="sig-paren">(</span><em>timeout=None</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device.get_next_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the next frame type and frame from the device.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<em>number</em><em> or </em><em>None</em>) – If not-None, a positive number of seconds
+to wait for a frame before raising a
+<a class="reference internal" href="#freenect2.NoFrameReceivedError" title="freenect2.NoFrameReceivedError"><code class="xref py py-class docutils literal"><span class="pre">NoFrameReceivedError</span></code></a> exception.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference internal" href="#freenect2.FrameType" title="freenect2.FrameType"><code class="xref py py-class docutils literal"><span class="pre">FrameType</span></code></a>, <a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a> tuple representing the
+type of received frame and the frame itself.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This method only works if the default listener is being used. That
+is to say that <a class="reference internal" href="#freenect2.Device.color_frame_listener" title="freenect2.Device.color_frame_listener"><code class="xref py py-attr docutils literal"><span class="pre">color_frame_listener</span></code></a> and
+<a class="reference internal" href="#freenect2.Device.ir_and_depth_frame_listener" title="freenect2.Device.ir_and_depth_frame_listener"><code class="xref py py-attr docutils literal"><span class="pre">ir_and_depth_frame_listener</span></code></a> have not been changed from
+their default values.</p>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Device.ir_and_depth_frame_listener">
+<code class="descname">ir_and_depth_frame_listener</code><a class="headerlink" href="#freenect2.Device.ir_and_depth_frame_listener" title="Permalink to this definition">¶</a></dt>
+<dd><p>A callable called whenever a new IR or depth frame arrives from the
+device. The callable should take two positional arguments, the frame
+type (an instance of <a class="reference internal" href="#freenect2.FrameType" title="freenect2.FrameType"><code class="xref py py-class docutils literal"><span class="pre">FrameType</span></code></a>) and the frame itself (an
+instance of <a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Device.registration">
+<code class="descname">registration</code><a class="headerlink" href="#freenect2.Device.registration" title="Permalink to this definition">¶</a></dt>
+<dd><p>An instance of <a class="reference internal" href="#freenect2.Registration" title="freenect2.Registration"><code class="xref py py-class docutils literal"><span class="pre">Registration</span></code></a> which can be used to
+undistort the raw depth image and register the RGB image with it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Device.running">
+<code class="descname">running</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>A context manager which can be used to ensure that the device’s
+streams are stopped. Any arguments are passed to <a class="reference internal" href="#freenect2.Device.start" title="freenect2.Device.start"><code class="xref py py-meth docutils literal"><span class="pre">start()</span></code></a>.</p>
+<div class="code highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">freenect2</span> <span class="k">import</span> <span class="n">Device</span>
+
+<span class="c1"># Open default device</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">Device</span><span class="p">()</span>
+
+<span class="c1"># Start depth and color frames</span>
+<span class="k">with</span> <span class="n">device</span><span class="o">.</span><span class="n">running</span><span class="p">():</span>
+    <span class="c1"># ... frame listener callbacks will be called ...</span>
+
+<span class="c1"># Device is now stopped</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Device.start">
+<code class="descname">start</code><span class="sig-paren">(</span><em>frame_listener=None</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start depth, IR and RGB streams.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame_listener</strong> (<em>callable</em><em> or </em><em>None</em>) – if not-None, this is a callable
+which is assigned to both <a class="reference internal" href="#freenect2.Device.color_frame_listener" title="freenect2.Device.color_frame_listener"><code class="xref py py-attr docutils literal"><span class="pre">color_frame_listener</span></code></a> and
+<a class="reference internal" href="#freenect2.Device.ir_and_depth_frame_listener" title="freenect2.Device.ir_and_depth_frame_listener"><code class="xref py py-attr docutils literal"><span class="pre">ir_and_depth_frame_listener</span></code></a> before the device is
+started.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Device.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Device.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop any running streams.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.FrameType">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">FrameType</code><a class="headerlink" href="#freenect2.FrameType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Available types of frames.</p>
+<dl class="attribute">
+<dt id="freenect2.FrameType.Color">
+<code class="descname">Color</code><em class="property"> = 1</em><a class="headerlink" href="#freenect2.FrameType.Color" title="Permalink to this definition">¶</a></dt>
+<dd><p>1920x1080. BGRX or RGBX</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameType.Depth">
+<code class="descname">Depth</code><em class="property"> = 4</em><a class="headerlink" href="#freenect2.FrameType.Depth" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>512x424 float, unit</em> – millimeter. Non-positive, NaN, and infinity are
+invalid or missing data</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameType.Ir">
+<code class="descname">Ir</code><em class="property"> = 2</em><a class="headerlink" href="#freenect2.FrameType.Ir" title="Permalink to this definition">¶</a></dt>
+<dd><p>512x424 float. Range is [0.0, 65535.0]</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.FrameFormat">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">FrameFormat</code><a class="headerlink" href="#freenect2.FrameFormat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pixel format.</p>
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.BGRX">
+<code class="descname">BGRX</code><em class="property"> = 4</em><a class="headerlink" href="#freenect2.FrameFormat.BGRX" title="Permalink to this definition">¶</a></dt>
+<dd><p>4 bytes of B, G, R, and unused per pixel</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.Float">
+<code class="descname">Float</code><em class="property"> = 2</em><a class="headerlink" href="#freenect2.FrameFormat.Float" title="Permalink to this definition">¶</a></dt>
+<dd><p>A 4-byte float per pixel</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.Gray">
+<code class="descname">Gray</code><em class="property"> = 6</em><a class="headerlink" href="#freenect2.FrameFormat.Gray" title="Permalink to this definition">¶</a></dt>
+<dd><p>1 byte of gray per pixel</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.Invalid">
+<code class="descname">Invalid</code><em class="property"> = 0</em><a class="headerlink" href="#freenect2.FrameFormat.Invalid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invalid format.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.RGBX">
+<code class="descname">RGBX</code><em class="property"> = 5</em><a class="headerlink" href="#freenect2.FrameFormat.RGBX" title="Permalink to this definition">¶</a></dt>
+<dd><p>4 bytes of R, G, B, and unused per pixel</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.FrameFormat.Raw">
+<code class="descname">Raw</code><em class="property"> = 1</em><a class="headerlink" href="#freenect2.FrameFormat.Raw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raw bitstream. ‘bytes_per_pixel’ defines the number of bytes</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.Frame">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">Frame</code><span class="sig-paren">(</span><em>frame_ref</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>A single frame received from the device.</p>
+<p>These should not be constructed directly since they are usually created by
+the freenect2 library itself. However you may need to construct “blank”
+frames for use with <a class="reference internal" href="#freenect2.Registration" title="freenect2.Registration"><code class="xref py py-class docutils literal"><span class="pre">Registration</span></code></a>. In which case, you should use
+the <a class="reference internal" href="#freenect2.Frame.create" title="freenect2.Frame.create"><code class="xref py py-meth docutils literal"><span class="pre">Frame.create()</span></code></a> class method.</p>
+<dl class="attribute">
+<dt id="freenect2.Frame.bytes_per_pixel">
+<code class="descname">bytes_per_pixel</code><a class="headerlink" href="#freenect2.Frame.bytes_per_pixel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of bytes in a pixel. If <a class="reference internal" href="#freenect2.Frame.format" title="freenect2.Frame.format"><code class="xref py py-attr docutils literal"><span class="pre">format</span></code></a> is
+<a class="reference internal" href="#freenect2.FrameFormat.Raw" title="freenect2.FrameFormat.Raw"><code class="xref py py-attr docutils literal"><span class="pre">FrameFormat.Raw</span></code></a>, this is the buffer size.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="freenect2.Frame.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>width</em>, <em>height</em>, <em>bytes_per_pixel</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Frame.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a blank frame with the specified width, height and bytes per
+pixel. Memory for the frame is automatically allocated. No other
+attributes are initialised.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.data">
+<code class="descname">data</code><a class="headerlink" href="#freenect2.Frame.data" title="Permalink to this definition">¶</a></dt>
+<dd><p>A buffer object pointing to the raw memory contents of the frame.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.exposure">
+<code class="descname">exposure</code><a class="headerlink" href="#freenect2.Frame.exposure" title="Permalink to this definition">¶</a></dt>
+<dd><p>From 0.5 (very bright) to ~60.0 (fully covered)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.format">
+<code class="descname">format</code><a class="headerlink" href="#freenect2.Frame.format" title="Permalink to this definition">¶</a></dt>
+<dd><p>Byte format. Informative only, doesn’t indicate errors. An instance
+of <a class="reference internal" href="#freenect2.FrameFormat" title="freenect2.FrameFormat"><code class="xref py py-class docutils literal"><span class="pre">FrameFormat</span></code></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.gain">
+<code class="descname">gain</code><a class="headerlink" href="#freenect2.Frame.gain" title="Permalink to this definition">¶</a></dt>
+<dd><p>From 1.0 (bright) to 1.5 (covered)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.gamma">
+<code class="descname">gamma</code><a class="headerlink" href="#freenect2.Frame.gamma" title="Permalink to this definition">¶</a></dt>
+<dd><p>From 1.0 (bright) to 6.4 (covered)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.height">
+<code class="descname">height</code><a class="headerlink" href="#freenect2.Frame.height" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of lines in the frame</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.sequence">
+<code class="descname">sequence</code><a class="headerlink" href="#freenect2.Frame.sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increasing frame sequence number</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.status">
+<code class="descname">status</code><a class="headerlink" href="#freenect2.Frame.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>zero if ok; non-zero for errors</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.timestamp">
+<code class="descname">timestamp</code><a class="headerlink" href="#freenect2.Frame.timestamp" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Unit</em> – roughly or exactly 0.1 millisecond</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Frame.to_array">
+<code class="descname">to_array</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Frame.to_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the image to a numpy <code class="xref py py-class docutils literal"><span class="pre">array</span></code> instance.</p>
+<p>The memory is not copied so be careful performing any operations which
+modify the contents of the frame.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Frame.to_image">
+<code class="descname">to_image</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Frame.to_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the Frame to a PIL <code class="xref py py-class docutils literal"><span class="pre">Image</span></code> instance.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.Frame.width">
+<code class="descname">width</code><a class="headerlink" href="#freenect2.Frame.width" title="Permalink to this definition">¶</a></dt>
+<dd><p>Length of a line (in pixels)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.Registration">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">Registration</code><span class="sig-paren">(</span><em>depth_p</em>, <em>rgb_p</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Information required to undistort raw depth frames and register RGB
+frames onto depth.</p>
+<p>Do not construct this directly. Instead use the
+<a class="reference internal" href="#freenect2.Device.registration" title="freenect2.Device.registration"><code class="xref py py-attr docutils literal"><span class="pre">Device.registration</span></code></a> attribute.</p>
+<dl class="method">
+<dt id="freenect2.Registration.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><em>rgb</em>, <em>depth</em>, <em>enable_filter=True</em>, <em>with_big_depth=False</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take an RGB and Depth image and return tuple with the undistorted
+depth image and color image rectified onto depth.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>rgb</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – RGB frame received from device</li>
+<li><strong>depth</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – Depth frame received from device</li>
+<li><strong>enable_filter</strong> (<em>bool</em>) – If true, filter out pixels not visible in
+both cameras.</li>
+<li><strong>with_big_depth</strong> (<em>bool</em>) – If true, also return a 1920x1082 mapping of
+depth onto the color map. The top and bottom rows are blank.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a> pair representing the undistorted depth and
+registered RGB frames.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Registration.get_big_points_xyz_array">
+<code class="descname">get_big_points_xyz_array</code><span class="sig-paren">(</span><em>big_depth</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.get_big_points_xyz_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <a class="reference internal" href="#freenect2.Registration.get_points_xyz_array" title="freenect2.Registration.get_points_xyz_array"><code class="xref py py-meth docutils literal"><span class="pre">get_points_xyz_array()</span></code></a> but operates on the “big” depth
+map which can be returned from <a class="reference internal" href="#freenect2.Registration.apply" title="freenect2.Registration.apply"><code class="xref py py-meth docutils literal"><span class="pre">apply()</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>big_depth</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – big 1920x1082 frame returned from
+<a class="reference internal" href="#freenect2.Registration.apply" title="freenect2.Registration.apply"><code class="xref py py-meth docutils literal"><span class="pre">apply()</span></code></a>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A 1082x1920x3 array of 3D points. The last dimension corresponding
+to x, y and z.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Registration.get_points_xyz">
+<code class="descname">get_points_xyz</code><span class="sig-paren">(</span><em>undistorted</em>, <em>rows</em>, <em>cols</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.get_points_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve real-world co-ordinates corresponding to points in the
+undistorted depth image. Units are millimetres.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>undistorted</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – the undistorted depth frame</li>
+<li><strong>rows</strong> (<em>numpy array</em>) – integer row indices of points in the depth frame</li>
+<li><strong>cols</strong> (<em>numpy array</em>) – integer column indices of points in the depth
+frame. Must be the same shape as <em>rows</em>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A three element tuple containing numpy arrays for the x-, y- and
+z-co-ordinates of the points. Each array has the same shape as
+<em>rows</em>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Registration.get_points_xyz_array">
+<code class="descname">get_points_xyz_array</code><span class="sig-paren">(</span><em>undistorted</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.get_points_xyz_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a 3D array of x, y, z points for each point in an undistorted
+frame. Invalid points are Nan-ed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>undistorted</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – the undistorted depth frame</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A 424x512x3 array of 3D points. The last dimension corresponding to
+x, y and z.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Registration.write_big_pcd">
+<code class="descname">write_big_pcd</code><span class="sig-paren">(</span><em>file_object</em>, <em>big_depth</em>, <em>rgb=None</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.write_big_pcd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write depth map and (optionally) RGB data to libpcl-compatible PCD
+format file. Works like <a class="reference internal" href="#freenect2.Registration.write_pcd" title="freenect2.Registration.write_pcd"><code class="xref py py-meth docutils literal"><span class="pre">write_pcd()</span></code></a> except that it works on
+the “big” depth map which can be returned from <a class="reference internal" href="#freenect2.Registration.apply" title="freenect2.Registration.apply"><code class="xref py py-meth docutils literal"><span class="pre">apply()</span></code></a>. If the
+RGB frame is present, each point is coloured according to the image
+otherwise the points are left uncoloured.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Under Python 3 the file object <em>must</em> be opened in binary mode.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>file_object</strong> (<em>file</em>) – A file object to write PCD data to</li>
+<li><strong>big_depth</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – the 1920x1082 de[th frame</li>
+<li><strong>registered</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – if not-None, the RGB data from the
+color camera</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="freenect2.Registration.write_pcd">
+<code class="descname">write_pcd</code><span class="sig-paren">(</span><em>file_object</em>, <em>undistorted</em>, <em>registered=None</em><span class="sig-paren">)</span><a class="headerlink" href="#freenect2.Registration.write_pcd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write depth map and (optionally) RGB data to libpcl-compatible PCD
+format file. If the registered RGB frame is present, each point is
+coloured according to the image otherwise the points are left
+uncoloured.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Under Python 3 the file object <em>must</em> be opened in binary mode.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>file_object</strong> (<em>file</em>) – A file object to write PCD data to</li>
+<li><strong>undistorted</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – the undistorted depth frame</li>
+<li><strong>registered</strong> (<a class="reference internal" href="#freenect2.Frame" title="freenect2.Frame"><code class="xref py py-class docutils literal"><span class="pre">Frame</span></code></a>) – if not-None, the RGB data corresponding to
+the depth frame.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.IrCameraParams">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">IrCameraParams</code><a class="headerlink" href="#freenect2.IrCameraParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>IR/depth camera intrinsic calibration.</p>
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.fx">
+<code class="descname">fx</code><a class="headerlink" href="#freenect2.IrCameraParams.fx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Focal length for x-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.fy">
+<code class="descname">fy</code><a class="headerlink" href="#freenect2.IrCameraParams.fy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Focal length for y-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.cx">
+<code class="descname">cx</code><a class="headerlink" href="#freenect2.IrCameraParams.cx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Principal point for x-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.cy">
+<code class="descname">cy</code><a class="headerlink" href="#freenect2.IrCameraParams.cy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Principal point for y-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.k1">
+<code class="descname">k1</code><a class="headerlink" href="#freenect2.IrCameraParams.k1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Radial distortion co-efficient, 1st-order</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.k2">
+<code class="descname">k2</code><a class="headerlink" href="#freenect2.IrCameraParams.k2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Radial distortion co-efficient, 2nd-order</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.k3">
+<code class="descname">k3</code><a class="headerlink" href="#freenect2.IrCameraParams.k3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Radial distortion co-efficient, 3rd-order</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.p1">
+<code class="descname">p1</code><a class="headerlink" href="#freenect2.IrCameraParams.p1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tangential distortion co-efficient</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.IrCameraParams.p2">
+<code class="descname">p2</code><a class="headerlink" href="#freenect2.IrCameraParams.p2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tangential distortion co-efficient</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="freenect2.ColorCameraParams">
+<em class="property">class </em><code class="descclassname">freenect2.</code><code class="descname">ColorCameraParams</code><a class="headerlink" href="#freenect2.ColorCameraParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>Color camera intrinsic calibration.</p>
+<dl class="attribute">
+<dt id="freenect2.ColorCameraParams.fx">
+<code class="descname">fx</code><a class="headerlink" href="#freenect2.ColorCameraParams.fx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Focal length for x-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.ColorCameraParams.fy">
+<code class="descname">fy</code><a class="headerlink" href="#freenect2.ColorCameraParams.fy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Focal length for y-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.ColorCameraParams.cx">
+<code class="descname">cx</code><a class="headerlink" href="#freenect2.ColorCameraParams.cx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Principal point for x-axis (pixels)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="freenect2.ColorCameraParams.cy">
+<code class="descname">cy</code><a class="headerlink" href="#freenect2.ColorCameraParams.cy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Principal point for y-axis (pixels)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">freenect2</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#pkg-config-errors">pkg-config errors</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simple-usage">Simple usage</a></li>
+<li><a class="reference internal" href="#module-freenect2">Reference</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Rich Wareham.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
